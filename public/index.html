@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebRTC Group Call - Room</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #00d9ff;
+      margin-bottom: 10px;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 30px;
+    }
+    
+    /* ===== Panels ===== */
+    .panels {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+    }
+    
+    .panel {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .panel h3 {
+      margin-top: 0;
+      color: #00d9ff;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 10px;
+    }
+    
+    /* ===== Form Controls ===== */
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      font-size: 14px;
+    }
+    
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #00d9ff;
+    }
+    
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #00d9ff, #00a8cc);
+      color: #000;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0,217,255,0.4);
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #00ff88, #00cc6a);
+      color: #000;
+    }
+    
+    .btn-success:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0,255,136,0.4);
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #ff4757, #ff3344);
+      color: #fff;
+    }
+    
+    .btn-danger:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(255,71,87,0.4);
+    }
+    
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    /* ===== Status Indicators ===== */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff4757;
+    }
+    
+    .status-dot.connected {
+      background: #00ff88;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* ===== Member List ===== */
+    .member-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .member-list li {
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.2);
+      margin-bottom: 8px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .member-list li.me {
+      background: rgba(0,217,255,0.2);
+      border: 1px solid rgba(0,217,255,0.3);
+    }
+    
+    .member-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00d9ff, #00a8cc);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+      color: #000;
+    }
+    
+    /* ===== Connection State ===== */
+    .connection-state {
+      padding: 8px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-block;
+    }
+    
+    .state-new { background: #666; }
+    .state-connecting { background: #f39c12; color: #000; }
+    .state-connected { background: #00ff88; color: #000; }
+    .state-disconnected { background: #ff4757; }
+    .state-failed { background: #c0392b; }
+    
+    /* ===== Video Grid ===== */
+    .video-section {
+      margin-top: 20px;
+    }
+    
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+    }
+    
+    .video-container {
+      position: relative;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+    }
+    
+    .video-container video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .video-label {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .video-state {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    
+    .local-video {
+      border: 2px solid #00d9ff;
+    }
+    
+    /* ===== Logs ===== */
+    .logs-panel {
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      font-family: monospace;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    
+    .log-entry.info { color: #00d9ff; }
+    .log-entry.success { color: #00ff88; }
+    .log-entry.warning { color: #f39c12; }
+    .log-entry.error { color: #ff4757; }
+    
+    /* ===== Stats Panel ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .stat-item {
+      background: rgba(0,0,0,0.2);
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #00d9ff;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .panels {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🎥 WebRTC Group Call</h1>
+    <p class="subtitle">Room-based Video Conferencing với STUN/TURN</p>
+    
+    <div class="panels">
+      <!-- Left Panel - Controls -->
+      <div class="panel">
+        <!-- Status Bar -->
+        <div class="status-bar">
+          <div class="status-dot" id="wsStatus"></div>
+          <span id="wsStatusText">Đang kết nối...</span>
+        </div>
+        
+        <!-- Register Section -->
+        <h3>👤 Đăng ký</h3>
+        <div class="form-group">
+          <label>Tên của bạn</label>
+          <input type="text" id="nameInput" placeholder="Nhập tên..." />
+        </div>
+        <button id="registerBtn" class="btn-primary" style="width:100%">Đăng ký</button>
+        
+        <!-- Room Section -->
+        <h3 style="margin-top:25px">🚪 Phòng họp</h3>
+        <div class="form-group">
+          <label>Room ID</label>
+          <input type="text" id="roomInput" placeholder="Nhập Room ID..." disabled />
+        </div>
+        <div class="btn-group">
+          <button id="createRoomBtn" class="btn-primary" disabled>Tạo phòng</button>
+          <button id="joinRoomBtn" class="btn-secondary" disabled>Tham gia</button>
+          <button id="leaveRoomBtn" class="btn-danger" disabled>Rời phòng</button>
+        </div>
+        
+        <!-- Current Room Info -->
+        <div id="roomInfo" style="margin-top:20px; display:none;">
+          <h3>📋 Thành viên trong phòng</h3>
+          <ul class="member-list" id="memberList"></ul>
+        </div>
+        
+        <!-- Call Controls -->
+        <div id="callControls" style="margin-top:20px; display:none;">
+          <h3>📞 Cuộc gọi</h3>
+          <div class="btn-group">
+            <button id="startCallBtn" class="btn-success">Bắt đầu Group Call</button>
+            <button id="hangupBtn" class="btn-danger" disabled>Kết thúc</button>
+          </div>
+        </div>
+        
+        <!-- Connection Stats -->
+        <div id="statsPanel" style="margin-top:20px; display:none;">
+          <h3>📊 Thống kê kết nối</h3>
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value" id="statPeers">0</div>
+              <div class="stat-label">Peers</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="statType">-</div>
+              <div class="stat-label">Connection Type</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="statStartTime">-</div>
+              <div class="stat-label">Bắt đầu</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="statDuration">-</div>
+              <div class="stat-label">Thời lượng</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Panel - Videos -->
+      <div class="panel">
+        <h3>🎬 Video</h3>
+        
+        <div class="video-grid" id="videoGrid">
+          <!-- Local Video -->
+          <div class="video-container local-video">
+            <video id="localVideo" autoplay playsinline muted></video>
+            <div class="video-label">
+              <span>📹</span>
+              <span id="localVideoLabel">Local (Chưa đăng ký)</span>
+            </div>
+          </div>
+          <!-- Remote videos will be added dynamically -->
+        </div>
+        
+        <!-- Logs -->
+        <div class="logs-panel">
+          <h3>📝 Logs</h3>
+          <div id="logsContainer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== CONFIGURATION =====
+    // Lấy SIGNALING_URL từ config hoặc dùng mặc định
+    const SIGNALING_URL = window.SIGNALING_URL || `wss://${location.hostname}:3000`;
+    
+    // ICE Servers Configuration với STUN và TURN
+    const ICE_SERVERS = [
+      // STUN server (miễn phí của Google)
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      
+      // TURN server - Thay thế bằng TURN server của bạn
+      // Uncomment và cấu hình khi có TURN server
+      /*
+      {
+        urls: 'turn:YOUR_TURN_SERVER:3478?transport=udp',
+        username: 'YOUR_USERNAME',
+        credential: 'YOUR_PASSWORD'
+      },
+      {
+        urls: 'turn:YOUR_TURN_SERVER:3478?transport=tcp',
+        username: 'YOUR_USERNAME',
+        credential: 'YOUR_PASSWORD'
+      },
+      {
+        urls: 'turns:YOUR_TURN_SERVER:5349?transport=tcp',
+        username: 'YOUR_USERNAME',
+        credential: 'YOUR_PASSWORD'
+      }
+      */
+    ];
+    
+    // Connection timeout (ms) trước khi báo TURN fallback
+    const ICE_TIMEOUT = 15000;
+
+    // ===== STATE =====
+    let ws = null;
+    let myName = '';
+    let currentRoomId = '';
+    let localStream = null;
+    let peerConnections = {}; // { peerName: RTCPeerConnection }
+    let callStartTime = null;
+    let statsInterval = null;
+    let roomMembers = [];
+
+    // ===== DOM Elements =====
+    const elements = {
+      wsStatus: document.getElementById('wsStatus'),
+      wsStatusText: document.getElementById('wsStatusText'),
+      nameInput: document.getElementById('nameInput'),
+      registerBtn: document.getElementById('registerBtn'),
+      roomInput: document.getElementById('roomInput'),
+      createRoomBtn: document.getElementById('createRoomBtn'),
+      joinRoomBtn: document.getElementById('joinRoomBtn'),
+      leaveRoomBtn: document.getElementById('leaveRoomBtn'),
+      roomInfo: document.getElementById('roomInfo'),
+      memberList: document.getElementById('memberList'),
+      callControls: document.getElementById('callControls'),
+      startCallBtn: document.getElementById('startCallBtn'),
+      hangupBtn: document.getElementById('hangupBtn'),
+      statsPanel: document.getElementById('statsPanel'),
+      videoGrid: document.getElementById('videoGrid'),
+      localVideo: document.getElementById('localVideo'),
+      localVideoLabel: document.getElementById('localVideoLabel'),
+      logsContainer: document.getElementById('logsContainer')
+    };
+
+    // ===== LOGGING =====
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.textContent = `[${timestamp}] ${message}`;
+      elements.logsContainer.insertBefore(entry, elements.logsContainer.firstChild);
+      
+      // Keep only last 50 logs
+      while (elements.logsContainer.children.length > 50) {
+        elements.logsContainer.removeChild(elements.logsContainer.lastChild);
+      }
+      
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    // ===== WEBSOCKET =====
+    function connectWebSocket() {
+      log(`Đang kết nối đến ${SIGNALING_URL}...`);
+      
+      ws = new WebSocket(SIGNALING_URL);
+      
+      ws.onopen = () => {
+        elements.wsStatus.classList.add('connected');
+        elements.wsStatusText.textContent = 'Đã kết nối';
+        log('WebSocket connected', 'success');
+      };
+      
+      ws.onclose = () => {
+        elements.wsStatus.classList.remove('connected');
+        elements.wsStatusText.textContent = 'Mất kết nối';
+        log('WebSocket disconnected', 'error');
+        
+        // Auto reconnect sau 3s
+        setTimeout(connectWebSocket, 3000);
+      };
+      
+      ws.onerror = (error) => {
+        log('WebSocket error', 'error');
+        console.error(error);
+      };
+      
+      ws.onmessage = async (event) => {
+        const message = JSON.parse(event.data);
+        await handleMessage(message);
+      };
+    }
+
+    // ===== MESSAGE HANDLER =====
+    async function handleMessage(message) {
+      switch (message.type) {
+        case 'registered':
+          log(`Đã đăng ký: ${message.name}`, 'success');
+          elements.roomInput.disabled = false;
+          elements.createRoomBtn.disabled = false;
+          elements.joinRoomBtn.disabled = false;
+          elements.localVideoLabel.textContent = `Local (${myName})`;
+          break;
+          
+        case 'error':
+          log(`Lỗi: ${message.message}`, 'error');
+          alert(message.message);
+          break;
+          
+        case 'roomCreated':
+        case 'roomJoined':
+          currentRoomId = message.roomId;
+          log(`Đã vào phòng: ${message.roomId}`, 'success');
+          elements.roomInfo.style.display = 'block';
+          elements.callControls.style.display = 'block';
+          elements.leaveRoomBtn.disabled = false;
+          elements.createRoomBtn.disabled = true;
+          elements.joinRoomBtn.disabled = true;
+          break;
+          
+        case 'roomLeft':
+          log('Đã rời phòng', 'info');
+          resetRoomState();
+          break;
+          
+        case 'roomMembers':
+          roomMembers = message.members;
+          updateMemberList(message.members);
+          break;
+          
+        case 'memberJoined':
+          log(`${message.name} đã tham gia phòng`, 'info');
+          break;
+          
+        case 'memberLeft':
+          log(`${message.name} đã rời phòng`, 'warning');
+          closePeerConnection(message.name);
+          break;
+          
+        case 'groupCallStarted':
+          log(`${message.initiator} bắt đầu group call`, 'info');
+          // Nếu không phải mình bắt đầu, tự động tham gia
+          if (message.initiator !== myName) {
+            await joinGroupCall();
+          }
+          break;
+          
+        case 'offer':
+          await handleOffer(message);
+          break;
+          
+        case 'answer':
+          await handleAnswer(message);
+          break;
+          
+        case 'candidate':
+          await handleCandidate(message);
+          break;
+          
+        case 'peerEndedCall':
+          log(`${message.name} kết thúc cuộc gọi`, 'warning');
+          closePeerConnection(message.name);
+          break;
+      }
+    }
+
+    // ===== ROOM MANAGEMENT =====
+    function updateMemberList(members) {
+      elements.memberList.innerHTML = '';
+      
+      members.forEach(name => {
+        const li = document.createElement('li');
+        li.className = name === myName ? 'me' : '';
+        
+        li.innerHTML = `
+          <div class="member-avatar">${name.charAt(0).toUpperCase()}</div>
+          <span>${name}${name === myName ? ' (Bạn)' : ''}</span>
+        `;
+        
+        elements.memberList.appendChild(li);
+      });
+      
+      document.getElementById('statPeers').textContent = members.length - 1;
+    }
+
+    function resetRoomState() {
+      currentRoomId = '';
+      roomMembers = [];
+      elements.roomInfo.style.display = 'none';
+      elements.callControls.style.display = 'none';
+      elements.statsPanel.style.display = 'none';
+      elements.leaveRoomBtn.disabled = true;
+      elements.createRoomBtn.disabled = false;
+      elements.joinRoomBtn.disabled = false;
+      elements.hangupBtn.disabled = true;
+      elements.startCallBtn.disabled = false;
+      
+      closeAllConnections();
+    }
+
+    // ===== MEDIA =====
+    async function getLocalMedia() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480 },
+          audio: true
+        });
+        elements.localVideo.srcObject = localStream;
+        log('Đã truy cập camera/mic', 'success');
+        return true;
+      } catch (error) {
+        log(`Lỗi truy cập camera/mic: ${error.message}`, 'error');
+        alert('Không thể truy cập camera/mic. Vui lòng cho phép quyền truy cập.');
+        return false;
+      }
+    }
+
+    // ===== PEER CONNECTION =====
+    function createPeerConnection(peerName) {
+      log(`Tạo PeerConnection với ${peerName}`);
+      
+      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      
+      // ICE timeout để detect TURN fallback
+      let iceTimeout = null;
+      let connectionEstablished = false;
+      
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          ws.send(JSON.stringify({
+            type: 'candidate',
+            roomId: currentRoomId,
+            sender: myName,
+            target: peerName,
+            candidate: event.candidate
+          }));
+        }
+      };
+      
+      pc.ontrack = (event) => {
+        log(`Nhận video từ ${peerName}`, 'success');
+        addRemoteVideo(peerName, event.streams[0]);
+      };
+      
+      pc.oniceconnectionstatechange = () => {
+        const state = pc.iceConnectionState;
+        log(`ICE state với ${peerName}: ${state}`);
+        updateVideoState(peerName, state);
+        
+        if (state === 'connected' || state === 'completed') {
+          connectionEstablished = true;
+          if (iceTimeout) {
+            clearTimeout(iceTimeout);
+            iceTimeout = null;
+          }
+          
+          // Lấy thống kê connection type
+          getConnectionType(pc, peerName);
+        }
+        
+        if (state === 'failed') {
+          log(`Kết nối với ${peerName} thất bại!`, 'error');
+          if (!connectionEstablished) {
+            log('P2P failed, đang thử TURN...', 'warning');
+          }
+        }
+        
+        if (state === 'disconnected' || state === 'closed') {
+          closePeerConnection(peerName);
+        }
+      };
+      
+      pc.onconnectionstatechange = () => {
+        const state = pc.connectionState;
+        log(`Connection state với ${peerName}: ${state}`);
+        updateVideoState(peerName, state);
+      };
+      
+      // Set ICE timeout
+      iceTimeout = setTimeout(() => {
+        if (!connectionEstablished && pc.iceConnectionState !== 'connected') {
+          log(`ICE timeout với ${peerName}, có thể cần TURN`, 'warning');
+        }
+      }, ICE_TIMEOUT);
+      
+      // Add local tracks
+      if (localStream) {
+        localStream.getTracks().forEach(track => {
+          pc.addTrack(track, localStream);
+        });
+      }
+      
+      peerConnections[peerName] = pc;
+      return pc;
+    }
+
+    async function getConnectionType(pc, peerName) {
+      try {
+        const stats = await pc.getStats();
+        let candidateType = 'unknown';
+        
+        stats.forEach(report => {
+          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+            const localCandidate = stats.get(report.localCandidateId);
+            if (localCandidate) {
+              candidateType = localCandidate.candidateType;
+            }
+          }
+        });
+        
+        const typeMap = {
+          'host': 'P2P (host)',
+          'srflx': 'STUN (srflx)',
+          'relay': 'TURN (relay)',
+          'prflx': 'P2P (prflx)'
+        };
+        
+        const displayType = typeMap[candidateType] || candidateType;
+        log(`Connection type với ${peerName}: ${displayType}`, 'info');
+        document.getElementById('statType').textContent = displayType;
+        
+        return candidateType;
+      } catch (error) {
+        console.error('Error getting stats:', error);
+        return 'unknown';
+      }
+    }
+
+    function closePeerConnection(peerName) {
+      const pc = peerConnections[peerName];
+      if (pc) {
+        pc.close();
+        delete peerConnections[peerName];
+        removeRemoteVideo(peerName);
+        log(`Đóng kết nối với ${peerName}`, 'info');
+      }
+    }
+
+    function closeAllConnections() {
+      for (const peerName in peerConnections) {
+        closePeerConnection(peerName);
+      }
+      
+      if (statsInterval) {
+        clearInterval(statsInterval);
+        statsInterval = null;
+      }
+      
+      callStartTime = null;
+    }
+
+    // ===== VIDEO MANAGEMENT =====
+    function addRemoteVideo(peerName, stream) {
+      // Remove existing if any
+      removeRemoteVideo(peerName);
+      
+      const container = document.createElement('div');
+      container.className = 'video-container';
+      container.id = `video-${peerName}`;
+      
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.playsinline = true;
+      video.srcObject = stream;
+      
+      const label = document.createElement('div');
+      label.className = 'video-label';
+      label.innerHTML = `<span>👤</span><span>${peerName}</span>`;
+      
+      const stateDiv = document.createElement('div');
+      stateDiv.className = 'video-state';
+      stateDiv.id = `state-${peerName}`;
+      
+      container.appendChild(video);
+      container.appendChild(label);
+      container.appendChild(stateDiv);
+      
+      elements.videoGrid.appendChild(container);
+    }
+
+    function removeRemoteVideo(peerName) {
+      const container = document.getElementById(`video-${peerName}`);
+      if (container) {
+        container.remove();
+      }
+    }
+
+    function updateVideoState(peerName, state) {
+      const stateDiv = document.getElementById(`state-${peerName}`);
+      if (stateDiv) {
+        const stateClass = {
+          'new': 'state-new',
+          'checking': 'state-connecting',
+          'connecting': 'state-connecting',
+          'connected': 'state-connected',
+          'completed': 'state-connected',
+          'disconnected': 'state-disconnected',
+          'failed': 'state-failed',
+          'closed': 'state-disconnected'
+        };
+        
+        stateDiv.className = `video-state connection-state ${stateClass[state] || 'state-new'}`;
+        stateDiv.textContent = state;
+      }
+    }
+
+    // ===== CALL MANAGEMENT =====
+    async function startGroupCall() {
+      if (!currentRoomId) {
+        alert('Bạn cần vào phòng trước!');
+        return;
+      }
+      
+      if (!localStream) {
+        const hasMedia = await getLocalMedia();
+        if (!hasMedia) return;
+      }
+      
+      callStartTime = new Date();
+      elements.statsPanel.style.display = 'block';
+      elements.hangupBtn.disabled = false;
+      elements.startCallBtn.disabled = true;
+      
+      // Thông báo bắt đầu group call
+      ws.send(JSON.stringify({
+        type: 'startGroupCall',
+        roomId: currentRoomId,
+        sender: myName
+      }));
+      
+      // Tạo offer đến tất cả thành viên trong room
+      await createOffersToAllMembers();
+      
+      // Start stats update
+      startStatsUpdate();
+      
+      log('Bắt đầu Group Call', 'success');
+    }
+
+    async function joinGroupCall() {
+      if (!localStream) {
+        const hasMedia = await getLocalMedia();
+        if (!hasMedia) return;
+      }
+      
+      callStartTime = new Date();
+      elements.statsPanel.style.display = 'block';
+      elements.hangupBtn.disabled = false;
+      elements.startCallBtn.disabled = true;
+      
+      startStatsUpdate();
+      
+      log('Tham gia Group Call', 'success');
+    }
+
+    async function createOffersToAllMembers() {
+      for (const member of roomMembers) {
+        if (member !== myName && !peerConnections[member]) {
+          await createOfferTo(member);
+        }
+      }
+    }
+
+    async function createOfferTo(targetName) {
+      const pc = createPeerConnection(targetName);
+      
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        ws.send(JSON.stringify({
+          type: 'offer',
+          roomId: currentRoomId,
+          sender: myName,
+          target: targetName,
+          offer: offer
+        }));
+        
+        log(`Gửi offer đến ${targetName}`, 'info');
+      } catch (error) {
+        log(`Lỗi tạo offer: ${error.message}`, 'error');
+      }
+    }
+
+    async function handleOffer(message) {
+      const { sender, offer } = message;
+      
+      log(`Nhận offer từ ${sender}`, 'info');
+      
+      if (!localStream) {
+        const hasMedia = await getLocalMedia();
+        if (!hasMedia) return;
+      }
+      
+      const pc = createPeerConnection(sender);
+      
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        ws.send(JSON.stringify({
+          type: 'answer',
+          roomId: currentRoomId,
+          sender: myName,
+          target: sender,
+          answer: answer
+        }));
+        
+        log(`Gửi answer đến ${sender}`, 'info');
+        
+        // Update UI
+        elements.statsPanel.style.display = 'block';
+        elements.hangupBtn.disabled = false;
+        elements.startCallBtn.disabled = true;
+        
+        if (!callStartTime) {
+          callStartTime = new Date();
+          startStatsUpdate();
+        }
+      } catch (error) {
+        log(`Lỗi xử lý offer: ${error.message}`, 'error');
+      }
+    }
+
+    async function handleAnswer(message) {
+      const { sender, answer } = message;
+      
+      log(`Nhận answer từ ${sender}`, 'info');
+      
+      const pc = peerConnections[sender];
+      if (pc) {
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        } catch (error) {
+          log(`Lỗi xử lý answer: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function handleCandidate(message) {
+      const { sender, candidate } = message;
+      
+      const pc = peerConnections[sender];
+      if (pc) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (error) {
+          console.warn('Error adding ICE candidate:', error);
+        }
+      }
+    }
+
+    function hangup() {
+      ws.send(JSON.stringify({
+        type: 'endCall',
+        roomId: currentRoomId,
+        sender: myName
+      }));
+      
+      closeAllConnections();
+      
+      elements.hangupBtn.disabled = true;
+      elements.startCallBtn.disabled = false;
+      elements.statsPanel.style.display = 'none';
+      
+      log('Kết thúc cuộc gọi', 'info');
+    }
+
+    // ===== STATS =====
+    function startStatsUpdate() {
+      if (statsInterval) clearInterval(statsInterval);
+      
+      document.getElementById('statStartTime').textContent = 
+        callStartTime.toLocaleTimeString();
+      
+      statsInterval = setInterval(() => {
+        if (callStartTime) {
+          const duration = Math.floor((new Date() - callStartTime) / 1000);
+          const mins = Math.floor(duration / 60);
+          const secs = duration % 60;
+          document.getElementById('statDuration').textContent = 
+            `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        document.getElementById('statPeers').textContent = 
+          Object.keys(peerConnections).length;
+      }, 1000);
+    }
+
+    // ===== EVENT LISTENERS =====
+    elements.registerBtn.addEventListener('click', async () => {
+      const name = elements.nameInput.value.trim();
+      if (!name) {
+        alert('Vui lòng nhập tên!');
+        return;
+      }
+      
+      myName = name;
+      
+      // Get media first
+      const hasMedia = await getLocalMedia();
+      if (!hasMedia) return;
+      
+      ws.send(JSON.stringify({ type: 'register', name: myName }));
+      elements.registerBtn.disabled = true;
+      elements.nameInput.disabled = true;
+    });
+
+    elements.createRoomBtn.addEventListener('click', () => {
+      const roomId = elements.roomInput.value.trim();
+      if (!roomId) {
+        alert('Vui lòng nhập Room ID!');
+        return;
+      }
+      
+      ws.send(JSON.stringify({ type: 'createRoom', roomId, name: myName }));
+    });
+
+    elements.joinRoomBtn.addEventListener('click', () => {
+      const roomId = elements.roomInput.value.trim();
+      if (!roomId) {
+        alert('Vui lòng nhập Room ID!');
+        return;
+      }
+      
+      ws.send(JSON.stringify({ type: 'joinRoom', roomId, name: myName }));
+    });
+
+    elements.leaveRoomBtn.addEventListener('click', () => {
+      ws.send(JSON.stringify({ type: 'leaveRoom', roomId: currentRoomId, sender: myName }));
+      closeAllConnections();
+    });
+
+    elements.startCallBtn.addEventListener('click', startGroupCall);
+    elements.hangupBtn.addEventListener('click', hangup);
+
+    // Enter key handlers
+    elements.nameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') elements.registerBtn.click();
+    });
+
+    elements.roomInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') elements.joinRoomBtn.click();
+    });
+
+    // ===== INITIALIZATION =====
+    connectWebSocket();
+  </script>
+</body>
+</html>
