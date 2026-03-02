@@ -1,0 +1,252 @@
+Đề bài: Mở rộng hệ thống WebRTC Call (TURN + Room + Group Call)
+1) Mục tiêu
+Xây dựng phiên bản nâng cấp của hệ thống gọi video WebRTC hiện có, đáp ứng:
+
+Hỗ trợ kết nối qua Internet trong các trường hợp NAT/Firewall bằng STUN/TURN (ưu tiên TURN khi P2P thất bại).
+
+Cho phép tạo phòng (room) và gọi video theo nhóm (nhiều người tham gia cùng lúc).
+
+2) Phạm vi hệ thống
+Server: Node.js + HTTPS + WebSocket (signaling).
+
+Client: HTML/JS chạy trên trình duyệt, dùng getUserMedia() + RTCPeerConnection.
+
+Không yêu cầu lưu trữ tài khoản/mật khẩu; đăng nhập bằng tên (nickname) là đủ.
+
+3) Yêu cầu chức năng (Functional Requirements)
+A. TURN / Kết nối qua Internet
+A1. Cấu hình ICE servers
+
+Client phải cho phép cấu hình danh sách iceServers gồm:
+
+1 STUN server (ví dụ: stun:stun.l.google.com:19302)
+
+1 TURN server (dùng coturn hoặc dịch vụ TURN khác)
+
+Các cấu hình TURN phải hỗ trợ:
+
+turn:HOST:3478?transport=udp
+
+turn:HOST:3478?transport=tcp
+
+turns:HOST:5349?transport=tcp (nếu có TLS)
+
+A2. Tự động fallback
+
+Nếu kết nối không thiết lập được trong thời gian X giây (gợi ý 10–15s), hệ thống phải:
+
+Thông báo “P2P failed, trying TURN…”
+
+Tiếp tục thương lượng ICE (đảm bảo TURN nằm trong iceServers).
+
+UI phải hiển thị trạng thái kết nối: new/connecting/connected/disconnected/failed.
+
+A3. Báo cáo thống kê
+
+Mỗi cuộc gọi phải log (console hoặc màn hình):
+
+thời điểm bắt đầu/kết thúc
+
+connectionState, iceConnectionState
+
+loại candidate được chọn (host/srflx/relay) (gợi ý dùng RTCPeerConnection.getStats() để suy ra relay)
+
+Nộp kèm 1 file report.md mô tả thử nghiệm:
+
+cùng LAN (P2P thường thành công)
+
+khác mạng/4G (khả năng phải relay)
+
+B. Room & Group Call
+B1. Tạo/Tham gia phòng
+
+Client có UI:
+
+Nhập tên người dùng
+
+Nhập roomId
+
+Nút: Create/Join Room
+
+Server quản lý phòng:
+
+Mỗi phòng có danh sách thành viên online
+
+Broadcast danh sách thành viên trong phòng cho tất cả client trong phòng
+
+B2. Gọi nhóm (mesh)
+
+Khi 1 người nhấn “Start Group Call” trong phòng:
+
+Mỗi client phải tạo n-1 RTCPeerConnection đến các thành viên còn lại (mesh topology).
+
+Signaling messages phải có đủ thông tin:
+
+roomId, sender, target, type, sdp/candidate
+
+UI hiển thị video dạng grid:
+
+1 local video
+
+nhiều remote video (mỗi remote tương ứng 1 peer)
+
+Khi 1 thành viên rời phòng:
+
+Server báo memberLeft
+
+Client tự đóng PC tương ứng và remove video element.
+
+B3. Quản lý trạng thái
+
+Nút Hangup phải:
+
+Gửi endCall hoặc leaveRoom
+
+Server dọn state liên quan
+
+Client đóng toàn bộ PC trong room
+
+Không được xảy ra lỗi “Dừng xong không gọi lại được”.
+
+4) Yêu cầu kỹ thuật (Technical Requirements)
+4.1 Signaling protocol (gợi ý)
+Sinh viên phải định nghĩa rõ các message JSON. Tối thiểu gồm:
+
+register: {type, name}
+
+createRoom/joinRoom: {type, roomId, name}
+
+roomMembers: {type, roomId, members:[]}
+
+offer: {type, roomId, sender, target, offer}
+
+answer: {type, roomId, sender, target, answer}
+
+candidate: {type, roomId, sender, target, candidate}
+
+leaveRoom: {type, roomId, sender}
+
+memberLeft: {type, roomId, name}
+
+endCall: {type, roomId, sender}
+
+4.2 TURN server
+Sinh viên phải triển khai coturn (khuyến khích dùng Docker) hoặc dùng dịch vụ TURN hợp lệ.
+
+Cung cấp thông tin cấu hình: host, port, username, credential.
+
+Nếu dùng coturn local: nêu rõ cách chạy và test.
+
+4.3 Code quality
+Không hardcode IP trong code: dùng biến cấu hình SIGNALING_URL.
+
+Tách code: server/ và public/.
+
+Có README.md hướng dẫn chạy.
+
+5) Deliverables (bắt buộc nộp)
+Source code đầy đủ:
+
+server.js + cấu trúc room
+
+public/index.html (hoặc tách app.js)
+
+README.md:
+
+cách tạo cert
+
+cách chạy server signaling
+
+cách chạy TURN (coturn / docker)
+
+cách test gọi 2 người và gọi nhóm 3–4 người
+
+report.md:
+
+mô tả kiến trúc
+
+mô tả message signaling
+
+kết quả test P2P vs TURN (kèm ảnh chụp màn hình/log)
+
+(tuỳ chọn cộng điểm) demo video 1–2 phút.
+
+6) Tiêu chí chấm điểm 
+(30%) Room hoạt động đúng: join/leave, cập nhật danh sách thành viên realtime
+
+(30%) Group call mesh hoạt động: ≥3 người, hiển thị đủ video, rời phòng không lỗi
+
+(25%) TURN hoạt động: có cấu hình + chứng minh dùng relay khi cần
+
+(10%) UI/UX: trạng thái rõ ràng, grid video đẹp, nút hoạt động ổn
+
+(5%) Báo cáo/README rõ ràng, chạy được theo hướng dẫn
+
+7) Ràng buộc & lưu ý
+Nếu chạy Internet thật: cần domain/cert hợp lệ hoặc chấp nhận self-signed (mô tả trong README).
+
+Khi gọi nhóm theo mesh, băng thông tăng nhanh: tối thiểu yêu cầu test 3–4 người.
+
+Có xử lý lỗi cơ bản: mất mạng, WS disconnect, peer rời phòng.
+
+
+
+yêu cầu nộp bài (Deliverables)
+Sinh viên bắt buộc nộp đầy đủ 03 hạng mục sau:
+
+1) Source code (bắt buộc)
+Nộp toàn bộ mã nguồn dự án, bao gồm:
+
+server/ (Node.js HTTPS + WebSocket signaling, quản lý room & group call)
+
+public/ (client HTML/CSS/JS, UI room, grid video, xử lý offer/answer/candidate, nút hangup)
+
+File cấu hình cần thiết (ví dụ: .env.example, cấu hình STUN/TURN)
+
+README.md hướng dẫn chạy dự án (cách tạo cert, chạy server, chạy TURN/coturn hoặc cấu hình dịch vụ TURN, cách test 2 người và nhóm 3–4 người)
+
+Định dạng nộp: 1 file .zip hoặc link GitHub (kèm tag/commit rõ ràng).
+
+2) Báo cáo (bắt buộc)
+Nộp file PDF (hoặc DOCX) tên: Report_WebRTC_TURN_Room_GroupCall.pdf, gồm tối thiểu:
+
+Mô tả kiến trúc (client/server, signaling, WebRTC, ICE/STUN/TURN)
+
+Định nghĩa protocol signaling (các message JSON: register/joinRoom/offer/answer/candidate/leaveRoom/endCall…)
+
+Thiết kế room & group call (mesh, cách tạo nhiều peer connections, cách hiển thị grid video)
+
+Triển khai TURN (coturn/dịch vụ TURN, cấu hình, ports, credential)
+
+Kết quả kiểm thử:
+
+Test LAN (P2P)
+
+Test khác mạng/4G (ưu tiên chứng minh có relay/TURN nếu xảy ra)
+
+Log/trạng thái: connectionState, iceConnectionState, và (nếu có) thống kê relay từ getStats()
+
+Hạn chế & hướng phát triển (ví dụ: SFU/MCU, tối ưu băng thông, cải thiện UI)
+
+3) Video demo (bắt buộc)
+Nộp video quay màn hình (MP4) thời lượng 2–5 phút, thể hiện tối thiểu:
+
+Tạo/Join room (ít nhất 3 người vào cùng phòng)
+
+Gọi nhóm: tất cả người tham gia nhìn thấy video của nhau (grid)
+
+Nhấn Dừng/Hangup và gọi lại (không bị lỗi “dừng xong không gọi được”)
+
+Minh chứng TURN (1 trong các cách sau):
+
+Demo gọi khi khác mạng/4G, hoặc
+
+Hiển thị log/getStats() chứng minh có candidate relay, hoặc
+
+Chụp/log trạng thái cho thấy kết nối đi qua TURN
+
+Định dạng nộp: file .mp4 hoặc link Drive/YouTube (unlisted).
+
+Quy định đặt tên file
+MSSV1_MSSV2_WebRTC.zip
+

@@ -420,40 +420,25 @@
     </div>
   </div>
 
+  <!-- Import config.js cho cấu hình STUN/TURN và Signaling URL -->
+  <script src="config.js"></script>
+  
   <script>
     // ===== CONFIGURATION =====
     // Lấy SIGNALING_URL từ config hoặc dùng mặc định
     const SIGNALING_URL = window.SIGNALING_URL || `wss://${location.hostname}:3000`;
     
-    // ICE Servers Configuration với STUN và TURN
-    const ICE_SERVERS = [
-      // STUN server (miễn phí của Google)
+    // ICE Servers Configuration - lấy từ config.js
+    const ICE_SERVERS = window.ICE_SERVERS_CONFIG || [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      
-      // TURN server - Thay thế bằng TURN server của bạn
-      // Uncomment và cấu hình khi có TURN server
-      /*
-      {
-        urls: 'turn:YOUR_TURN_SERVER:3478?transport=udp',
-        username: 'YOUR_USERNAME',
-        credential: 'YOUR_PASSWORD'
-      },
-      {
-        urls: 'turn:YOUR_TURN_SERVER:3478?transport=tcp',
-        username: 'YOUR_USERNAME',
-        credential: 'YOUR_PASSWORD'
-      },
-      {
-        urls: 'turns:YOUR_TURN_SERVER:5349?transport=tcp',
-        username: 'YOUR_USERNAME',
-        credential: 'YOUR_PASSWORD'
-      }
-      */
+      { urls: 'stun:stun1.l.google.com:19302' }
     ];
     
     // Connection timeout (ms) trước khi báo TURN fallback
-    const ICE_TIMEOUT = 15000;
+    const ICE_TIMEOUT = window.ICE_CONNECTION_TIMEOUT || 15000;
+    
+    // Debug mode
+    const DEBUG_MODE = window.DEBUG_MODE || false;
 
     // ===== STATE =====
     let ws = null;
@@ -668,6 +653,7 @@
       // ICE timeout để detect TURN fallback
       let iceTimeout = null;
       let connectionEstablished = false;
+      let iceRestartAttempted = false;
       
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -678,6 +664,11 @@
             target: peerName,
             candidate: event.candidate
           }));
+          
+          // Log candidate type để debug
+          if (DEBUG_MODE) {
+            log(`ICE candidate (${event.candidate.type || 'unknown'}): ${event.candidate.candidate.substring(0, 50)}...`, 'info');
+          }
         }
       };
       
@@ -704,12 +695,23 @@
         
         if (state === 'failed') {
           log(`Kết nối với ${peerName} thất bại!`, 'error');
-          if (!connectionEstablished) {
-            log('P2P failed, đang thử TURN...', 'warning');
+          
+          // Thử ICE restart nếu chưa thử
+          if (!iceRestartAttempted) {
+            iceRestartAttempted = true;
+            log('P2P failed, trying TURN...', 'warning');
+            
+            // ICE restart để thử lại với TURN
+            pc.restartIce();
+            log('Đang thử kết nối lại qua TURN server...', 'info');
           }
         }
         
-        if (state === 'disconnected' || state === 'closed') {
+        if (state === 'disconnected') {
+          log(`Mất kết nối với ${peerName}, đang thử kết nối lại...`, 'warning');
+        }
+        
+        if (state === 'closed') {
           closePeerConnection(peerName);
         }
       };
@@ -720,10 +722,21 @@
         updateVideoState(peerName, state);
       };
       
-      // Set ICE timeout
+      // Set ICE timeout - thông báo khi P2P có thể thất bại
       iceTimeout = setTimeout(() => {
-        if (!connectionEstablished && pc.iceConnectionState !== 'connected') {
-          log(`ICE timeout với ${peerName}, có thể cần TURN`, 'warning');
+        if (!connectionEstablished) {
+          const currentState = pc.iceConnectionState;
+          if (currentState !== 'connected' && currentState !== 'completed') {
+            log('P2P failed, trying TURN...', 'warning');
+            log(`ICE vẫn đang ở trạng thái "${currentState}" sau ${ICE_TIMEOUT/1000}s`, 'warning');
+            
+            // Thử ICE restart để ưu tiên TURN candidates
+            if (!iceRestartAttempted) {
+              iceRestartAttempted = true;
+              pc.restartIce();
+              log('Đã yêu cầu ICE restart để thử TURN relay...', 'info');
+            }
+          }
         }
       }, ICE_TIMEOUT);
       
@@ -742,12 +755,19 @@
       try {
         const stats = await pc.getStats();
         let candidateType = 'unknown';
+        let localIP = '';
+        let remoteIP = '';
         
         stats.forEach(report => {
           if (report.type === 'candidate-pair' && report.state === 'succeeded') {
             const localCandidate = stats.get(report.localCandidateId);
+            const remoteCandidate = stats.get(report.remoteCandidateId);
             if (localCandidate) {
               candidateType = localCandidate.candidateType;
+              localIP = localCandidate.address || localCandidate.ip || '';
+            }
+            if (remoteCandidate) {
+              remoteIP = remoteCandidate.address || remoteCandidate.ip || '';
             }
           }
         });
@@ -760,6 +780,17 @@
         };
         
         const displayType = typeMap[candidateType] || candidateType;
+        
+        // Log chi tiết về trạng thái kết nối
+        if (candidateType === 'relay') {
+          log(`⚠️ FIREWALL DETECTED: Kết nối với ${peerName} đi qua TURN server`, 'warning');
+          log(`→ P2P bị chặn, media relay qua: ${localIP}`, 'warning');
+        } else if (candidateType === 'host') {
+          log(`✅ P2P thành công với ${peerName} (không bị firewall)`, 'success');
+        } else if (candidateType === 'srflx') {
+          log(`✅ Kết nối qua STUN với ${peerName} (NAT traversal OK)`, 'success');
+        }
+        
         log(`Connection type với ${peerName}: ${displayType}`, 'info');
         document.getElementById('statType').textContent = displayType;
         

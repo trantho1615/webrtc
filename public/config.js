@@ -4,10 +4,21 @@
  */
 
 // ===== SIGNALING SERVER URL =====
-// Thay đổi theo địa chỉ server của bạn
-window.SIGNALING_URL = 'wss://192.168.100.122:3000';
-// Ví dụ: window.SIGNALING_URL = 'wss://192.168.1.100:3000';
-// Ví dụ: window.SIGNALING_URL = 'wss://your-domain.com:3000';
+// Tự động detect URL dựa trên cách truy cập
+// - Nếu có port trong URL (localhost:3000) → dùng port đó
+// - Nếu không có port (ngrok, domain) → dùng default HTTPS port
+const getSignalingUrl = () => {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = location.hostname;
+  // Nếu URL có port thì dùng, không thì bỏ qua (ngrok dùng 443 mặc định)
+  const port = location.port ? `:${location.port}` : '';
+  return `${protocol}//${host}${port}`;
+};
+
+window.SIGNALING_URL = getSignalingUrl();
+// Ví dụ kết quả:
+// - localhost:3000 → wss://localhost:3000
+// - abc123.ngrok-free.app → wss://abc123.ngrok-free.app (không có port)
 
 // ===== ICE SERVERS CONFIGURATION =====
 // Cấu hình STUN/TURN servers
@@ -16,59 +27,54 @@ window.ICE_SERVERS_CONFIG = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
   
-  // TURN servers - QUAN TRỌNG cho kết nối qua Internet
-  // Uncomment và cấu hình khi có TURN server
-  
-  /*
-  // TURN UDP
+  // ===== TURN servers - Metered.ca Free TURN =====
+  // Đăng ký miễn phí tại: https://www.metered.ca/tools/openrelay/
   {
-    urls: 'turn:YOUR_TURN_SERVER:3478?transport=udp',
-    username: 'YOUR_USERNAME',
-    credential: 'YOUR_PASSWORD'
-  },
-  
-  // TURN TCP (cho firewall chặn UDP)
-  {
-    urls: 'turn:YOUR_TURN_SERVER:3478?transport=tcp',
-    username: 'YOUR_USERNAME',
-    credential: 'YOUR_PASSWORD'
-  },
-  
-  // TURNS (TURN over TLS) - Port 443 thường không bị chặn
-  {
-    urls: 'turns:YOUR_TURN_SERVER:5349?transport=tcp',
-    username: 'YOUR_USERNAME',
-    credential: 'YOUR_PASSWORD'
-  }
-  */
+        urls: "stun:stun.relay.metered.ca:80",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: "e066f6a33afbc391d11e7d83",
+        credential: "ZyqszO9QnUeF1R3r",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "e066f6a33afbc391d11e7d83",
+        credential: "ZyqszO9QnUeF1R3r",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:443",
+        username: "e066f6a33afbc391d11e7d83",
+        credential: "ZyqszO9QnUeF1R3r",
+      },
+      {
+        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "e066f6a33afbc391d11e7d83",
+        credential: "ZyqszO9QnUeF1R3r",
+      }
 ];
 
-// ===== VÍ DỤ VỚI COTURN LOCAL =====
+// ===== NẾU MUỐN DÙNG COTURN LOCAL, THAY THẾ BẰNG CẤU HÌNH NÀY =====
 /*
 window.ICE_SERVERS_CONFIG = [
   { urls: 'stun:stun.l.google.com:19302' },
   {
-    urls: 'turn:localhost:3478?transport=udp',
+    urls: 'turn:YOUR_SERVER_IP:3478?transport=udp',
     username: 'webrtc',
     credential: 'webrtc123'
   },
   {
-    urls: 'turn:localhost:3478?transport=tcp',
+    urls: 'turn:YOUR_SERVER_IP:3478?transport=tcp',
     username: 'webrtc',
     credential: 'webrtc123'
-  }
-];
-*/
-
-// ===== VÍ DỤ VỚI DỊCH VỤ TURN (Metered, Twilio, etc.) =====
-/*
-window.ICE_SERVERS_CONFIG = [
-  { urls: 'stun:stun.l.google.com:19302' },
+  },
   {
-    urls: 'turn:a]global.turn.twilio.com:3478?transport=udp',
-    username: 'your-twilio-username',
-    credential: 'your-twilio-credential'
+    urls: 'turns:YOUR_SERVER_IP:5349?transport=tcp',
+    username: 'webrtc',
+    credential: 'webrtc123'
   }
 ];
 */
