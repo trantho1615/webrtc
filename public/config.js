@@ -21,63 +21,33 @@ window.SIGNALING_URL = getSignalingUrl();
 // - abc123.ngrok-free.app → wss://abc123.ngrok-free.app (không có port)
 
 // ===== ICE SERVERS CONFIGURATION =====
-// Cấu hình STUN/TURN servers
+// Cấu hình STUN/TURN servers được fetch từ server API (không hardcode credentials)
+// Fallback nếu API không khả dụng
 window.ICE_SERVERS_CONFIG = [
-  // STUN servers (miễn phí)
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
   { urls: 'stun:stun4.l.google.com:19302' },
-  
-  // ===== TURN servers - Metered.ca Free TURN =====
-  // Đăng ký miễn phí tại: https://www.metered.ca/tools/openrelay/
-  {
-        urls: "stun:stun.relay.metered.ca:80",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80",
-        username: "e066f6a33afbc391d11e7d83",
-        credential: "ZyqszO9QnUeF1R3r",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
-        username: "e066f6a33afbc391d11e7d83",
-        credential: "ZyqszO9QnUeF1R3r",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:443",
-        username: "e066f6a33afbc391d11e7d83",
-        credential: "ZyqszO9QnUeF1R3r",
-      },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
-        username: "e066f6a33afbc391d11e7d83",
-        credential: "ZyqszO9QnUeF1R3r",
-      }
 ];
 
-// ===== NẾU MUỐN DÙNG COTURN LOCAL, THAY THẾ BẰNG CẤU HÌNH NÀY =====
-/*
-window.ICE_SERVERS_CONFIG = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  {
-    urls: 'turn:YOUR_SERVER_IP:3478?transport=udp',
-    username: 'webrtc',
-    credential: 'webrtc123'
-  },
-  {
-    urls: 'turn:YOUR_SERVER_IP:3478?transport=tcp',
-    username: 'webrtc',
-    credential: 'webrtc123'
-  },
-  {
-    urls: 'turns:YOUR_SERVER_IP:5349?transport=tcp',
-    username: 'webrtc',
-    credential: 'webrtc123'
+// Hàm lấy ICE config từ server API
+window.fetchIceServersConfig = async () => {
+  try {
+    const response = await fetch('/api/ice-config');
+    if (response.ok) {
+      const data = await response.json();
+      window.ICE_SERVERS_CONFIG = data.iceServers;
+      console.log('ICE servers config loaded from server');
+    }
+  } catch (error) {
+    console.warn('Could not fetch ICE config from server, using fallback STUN servers:', error);
   }
-];
-*/
+  return window.ICE_SERVERS_CONFIG;
+};
+
+// Tự động fetch khi load
+window.fetchIceServersConfig();
 
 // ===== TIMEOUT SETTINGS =====
 // Thời gian chờ ICE connection trước khi báo cần TURN (ms)

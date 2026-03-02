@@ -32,6 +32,50 @@ const server = https.createServer(options, app);
 const wss = new WebSocket.Server({ server });
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ===== API endpoint: ICE Servers Configuration =====
+app.get('/api/ice-config', (req, res) => {
+  const iceServers = [
+    // STUN servers (miễn phí)
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+  ];
+  
+  // Thêm TURN servers nếu có credentials trong env
+  const turnUsername = process.env.METERED_TURN_USERNAME;
+  const turnCredential = process.env.METERED_TURN_CREDENTIAL;
+  
+  if (turnUsername && turnCredential) {
+    iceServers.push(
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      {
+        urls: 'turn:global.relay.metered.ca:80',
+        username: turnUsername,
+        credential: turnCredential,
+      },
+      {
+        urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+        username: turnUsername,
+        credential: turnCredential,
+      },
+      {
+        urls: 'turn:global.relay.metered.ca:443',
+        username: turnUsername,
+        credential: turnCredential,
+      },
+      {
+        urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+        username: turnUsername,
+        credential: turnCredential,
+      }
+    );
+  }
+  
+  res.json({ iceServers });
+});
+
 // ===== Data Structures =====
 // name -> { ws, roomId }
 const clients = new Map();

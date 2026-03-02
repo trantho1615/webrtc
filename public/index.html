@@ -428,8 +428,8 @@
     // Lấy SIGNALING_URL từ config hoặc dùng mặc định
     const SIGNALING_URL = window.SIGNALING_URL || `wss://${location.hostname}:3000`;
     
-    // ICE Servers Configuration - lấy từ config.js
-    const ICE_SERVERS = window.ICE_SERVERS_CONFIG || [
+    // ICE Servers Configuration - lấy từ config.js (dynamic để nhận TURN từ API)
+    const getIceServers = () => window.ICE_SERVERS_CONFIG || [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' }
     ];
@@ -646,9 +646,10 @@
 
     // ===== PEER CONNECTION =====
     function createPeerConnection(peerName) {
-      log(`Tạo PeerConnection với ${peerName}`);
+      const iceServers = getIceServers();
+      log(`Tạo PeerConnection với ${peerName} (${iceServers.length} ICE servers)`);
       
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const pc = new RTCPeerConnection({ iceServers });
       
       // ICE timeout để detect TURN fallback
       let iceTimeout = null;
