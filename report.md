@@ -3,7 +3,9 @@
 ## 1. Tổng quan dự án
 
 ### 1.1 Mục tiêu
+
 Xây dựng hệ thống gọi video nhóm (group call) sử dụng WebRTC, hỗ trợ:
+
 - Tạo và quản lý phòng họp (room)
 - Gọi video nhóm với nhiều người (mesh topology)
 - Kết nối qua Internet với STUN/TURN
@@ -304,10 +306,12 @@ async function getConnectionType(pc) {
 ### 5.1 Test Case 1: Cùng LAN (P2P)
 
 **Môi trường:**
+
 - 2 thiết bị cùng mạng WiFi
 - Không qua TURN
 
 **Kết quả:**
+
 ```
 [INFO] ICE state với User2: checking
 [INFO] ICE state với User2: connected
@@ -319,10 +323,12 @@ async function getConnectionType(pc) {
 ### 5.2 Test Case 2: Khác mạng (STUN)
 
 **Môi trường:**
+
 - 1 thiết bị WiFi, 1 thiết bị qua NAT router khác
 - NAT loại Cone
 
 **Kết quả:**
+
 ```
 [INFO] ICE state với User2: checking
 [INFO] ICE state với User2: connected
@@ -332,11 +338,13 @@ async function getConnectionType(pc) {
 ### 5.3 Test Case 3: 4G vs WiFi (TURN)
 
 **Môi trường:**
+
 - 1 thiết bị WiFi
 - 1 điện thoại dùng 4G
 - NAT Symmetric (4G thường có)
 
 **Kết quả:**
+
 ```
 [WARNING] ICE timeout với User2, có thể cần TURN
 [INFO] ICE state với User2: checking
@@ -347,15 +355,18 @@ async function getConnectionType(pc) {
 ### 5.4 Test Case 4: Group Call 3-4 người
 
 **Môi trường:**
+
 - 4 thiết bị (2 laptop, 2 điện thoại)
 - Cùng phòng "test-group"
 
 **Kết quả:**
+
 - 3 thiết bị: 3 peer connections, tất cả connected
 - 4 thiết bị: 6 peer connections, tất cả connected
 - Khi 1 người rời: `memberLeft` broadcast, các PC tương ứng được đóng
 
 **Logs:**
+
 ```
 [INFO] User1 bắt đầu group call trong phòng "test-group"
 [INFO] Offer: "User1" -> "User2"
