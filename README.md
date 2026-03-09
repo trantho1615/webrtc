@@ -68,6 +68,7 @@ Hệ thống gọi video nhóm sử dụng WebRTC với hỗ trợ STUN/TURN, ch
 
 - **Node.js** >= 14.x
 - **npm** >= 6.x
+- **pnpm** (tùy chọn, để quản lý dependencies nhanh hơn)
 - **OpenSSL** (để tạo SSL certificate)
 - **Docker** (tùy chọn, để chạy coturn)
 
@@ -76,19 +77,27 @@ Hệ thống gọi video nhóm sử dụng WebRTC với hỗ trợ STUN/TURN, ch
 ### 1. Clone hoặc tải source code
 
 ```bash
-cd webrtc-app-v2
+cd webrtc
 ```
 
 ### 2. Cài đặt dependencies
 
 ```bash
+# Với npm
 npm install
+
+# Hoặc với pnpm
+# pnpm install
 ```
 
 ### 3. Cài thêm dotenv (nếu chưa có)
 
 ```bash
+# Với npm
 npm install dotenv
+
+# Hoặc với pnpm
+# pnpm add dotenv
 ```
 
 ### 4. Tạo file cấu hình
@@ -110,7 +119,7 @@ WebRTC yêu cầu HTTPS. Tạo self-signed certificate cho development:
 mkdir -p certs
 
 # Tạo private key và certificate
-openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes -subj "/CN=localhost"
+openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes -subj "//CN=localhost"
 ```
 
 ### Cách 2: Script tự động
@@ -194,9 +203,9 @@ sudo systemctl enable coturn
 
 ### Cách 3: Sử dụng dịch vụ TURN miễn phí/trả phí
 
-- **Metered.ca**: https://www.metered.ca/tools/openrelay/
-- **Twilio**: https://www.twilio.com/stun-turn
-- **Xirsys**: https://xirsys.com/
+- **Metered.ca**: <https://www.metered.ca/tools/openrelay/>
+- **Twilio**: <https://www.twilio.com/stun-turn>
+- **Xirsys**: <https://xirsys.com/>
 
 ### Cấu hình TURN trong client
 
@@ -250,6 +259,7 @@ pm2 startup
 Mở trình duyệt và truy cập: `https://localhost:3000`
 
 **Lưu ý**: Với self-signed certificate, cần chấp nhận cảnh báo bảo mật:
+
 - Chrome: Click "Advanced" → "Proceed to localhost (unsafe)"
 - Firefox: Click "Advanced" → "Accept the Risk and Continue"
 
@@ -310,6 +320,7 @@ Mở trình duyệt và truy cập: `https://localhost:3000`
 ### Kiểm tra loại kết nối
 
 Trong Console của trình duyệt, bạn sẽ thấy:
+
 - `Connection type: P2P (host)` - Kết nối trực tiếp (cùng LAN)
 - `Connection type: STUN (srflx)` - Qua STUN server
 - `Connection type: TURN (relay)` - Qua TURN server
